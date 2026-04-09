@@ -9,6 +9,7 @@ using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
@@ -62,6 +63,18 @@ public static class CombatAutoPlayController
             while (CanAutoPlay(out Player? maybePlayer))
             {
                 Player player = maybePlayer!;
+
+                if (TryUsePotion(player, out PotionModel potion))
+                {
+                    bool potionResolved = await WaitForPotionToResolve(player, potion);
+                    if (!potionResolved)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
                 if (player.PlayerCombatState == null || player.PlayerCombatState.Energy <= 0)
                 {
                     break;
@@ -161,18 +174,33 @@ public static class CombatAutoPlayController
         return false;
     }
 
+    private static bool TryUsePotion(Player player, out PotionModel potion)
+    {
+        potion = null!;
+
+        if (!PlannerRuntime.TryPlanPotionUse(player, out PotionModel? plannedPotion, out Creature? target))
+        {
+            return false;
+        }
+
+        plannedPotion.EnqueueManualUse(target);
+        potion = plannedPotion;
+        return true;
+    }
+
     private static async Task<bool> WaitForCardToLeaveHand(Player player, CardModel card)
     {
         for (int i = 0; i < MaxResolvePollCount; i++)
         {
-            if (!CanAutoPlay(out Player? currentPlayer) || currentPlayer != player || player.PlayerCombatState == null)
-            {
-                return false;
-            }
-
-            if (card.Pile?.Type != PileType.Hand || !player.PlayerCombatState.Hand.Cards.Contains(card))
+            CardPile? hand = player.PlayerCombatState?.Hand;
+            if (hand == null || card.Pile?.Type != PileType.Hand || !hand.Cards.Contains(card))
             {
                 return true;
+            }
+
+            if (!CanContinueResolving(player))
+            {
+                return false;
             }
 
             await Cmd.Wait(PollIntervalSeconds);
@@ -180,5 +208,50 @@ public static class CombatAutoPlayController
 
         Log.Warn($"Auto play timed out waiting for {card.Id.Entry} to resolve.");
         return false;
+    }
+
+    private static async Task<bool> WaitForPotionToResolve(Player player, PotionModel potion)
+    {
+        for (int i = 0; i < MaxResolvePollCount; i++)
+        {
+            if (potion.HasBeenRemovedFromState || !player.Potions.Contains(potion))
+            {
+                return true;
+            }
+
+            if (!CanContinueResolving(player))
+            {
+                return false;
+            }
+
+            await Cmd.Wait(PollIntervalSeconds);
+        }
+
+        Log.Warn($"Auto play timed out waiting for potion {potion.Id.Entry} to resolve.");
+        return false;
+    }
+
+    private static bool CanContinueResolving(Player player)
+    {
+        if (NCombatRoom.Instance == null || CombatManager.Instance.IsOverOrEnding)
+        {
+            return false;
+        }
+
+        CombatState? combatState = CombatManager.Instance.DebugOnlyGetState();
+        if (combatState == null)
+        {
+            return false;
+        }
+
+        Player? currentPlayer = LocalContext.GetMe(combatState);
+        if (!ReferenceEquals(currentPlayer, player))
+        {
+            return false;
+        }
+
+        return player.PlayerCombatState != null &&
+               player.Creature.IsAlive &&
+               player.Creature.CombatState != null;
     }
 }

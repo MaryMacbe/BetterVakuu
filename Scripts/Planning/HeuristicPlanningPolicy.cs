@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rewards;
@@ -11,6 +12,8 @@ namespace ModTest.Scripts.Planning;
 public sealed class HeuristicPlanningPolicy : IPlanningPolicy
 {
     private readonly HeuristicCardScorer _cardScorer = new HeuristicCardScorer();
+    private readonly HeuristicPotionScorer _potionScorer = new HeuristicPotionScorer();
+    private readonly HeuristicEventScorer _eventScorer = new HeuristicEventScorer();
 
     public CombatPlan? PlanCombat(PlanningSnapshot snapshot)
     {
@@ -123,6 +126,48 @@ public sealed class HeuristicPlanningPolicy : IPlanningPolicy
         }
 
         return result;
+    }
+
+    public PotionPlan? PlanPotion(PlanningSnapshot snapshot)
+    {
+        PotionPlan? bestPlan = null;
+
+        foreach (PotionModel potion in snapshot.Potions)
+        {
+            if (!PotionTargeting.TryResolveTarget(potion, snapshot, out var target))
+            {
+                continue;
+            }
+
+            float score = _potionScorer.ScorePotion(snapshot, potion, target);
+            if (bestPlan == null || score > bestPlan.Score)
+            {
+                bestPlan = new PotionPlan(potion, target, score, $"heuristic potion score {score:F2}");
+            }
+        }
+
+        if (bestPlan is { Score: > 0f })
+        {
+            return bestPlan;
+        }
+
+        return null;
+    }
+
+    public EventPlan? PlanEvent(PlanningSnapshot snapshot, IReadOnlyList<EventOption> options)
+    {
+        EventPlan? bestPlan = null;
+
+        foreach (EventOption option in options)
+        {
+            float score = _eventScorer.ScoreOption(snapshot, option);
+            if (bestPlan == null || score > bestPlan.Score)
+            {
+                bestPlan = new EventPlan(option, score, $"heuristic event score {score:F2}");
+            }
+        }
+
+        return bestPlan;
     }
 
     private float ScoreReward(PlanningSnapshot snapshot, Reward reward)

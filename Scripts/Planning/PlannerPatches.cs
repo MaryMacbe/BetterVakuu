@@ -1,6 +1,7 @@
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
+using MegaCrit.Sts2.Core.Nodes.Events;
 using MegaCrit.Sts2.Core.Nodes.Screens;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
@@ -52,5 +53,15 @@ public static class PlannerMapPatch
         {
             PlannerRuntime.HandleMapScreen(__result);
         }
+    }
+}
+
+[HarmonyPatch(typeof(NEventLayout), nameof(NEventLayout.AddOptions))]
+public static class PlannerEventLayoutPatch
+{
+    [HarmonyPostfix]
+    private static void OnEventOptionsAdded(NEventLayout __instance)
+    {
+        PlannerRuntime.HandleEventLayout(__instance);
     }
 }

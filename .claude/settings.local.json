@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/marymacbeth/Desktop/Slay the Spire 2/MegaCrit/**)",
+      "Read(//c/Users/marymacbeth/Desktop/Slay the Spire 2/addons/**)",
+      "Read(//c/Users/marymacbeth/Desktop/Slay the Spire 2/**)"
+    ]
+  }
+}

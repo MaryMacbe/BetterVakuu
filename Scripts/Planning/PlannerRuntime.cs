@@ -6,17 +6,21 @@ using Godot;
 using MegaCrit.Sts2.Core.AutoSlay.Helpers;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Context;
+using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
+using MegaCrit.Sts2.Core.Nodes.Events;
 using MegaCrit.Sts2.Core.Nodes.Rewards;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
+using MegaCrit.Sts2.Core.Nodes.Screens.ScreenContext;
 
 namespace ModTest.Scripts.Planning;
 
@@ -26,6 +30,7 @@ public static class PlannerRuntime
     private static readonly HashSet<ulong> RewardScreensInFlight = [];
     private static readonly HashSet<ulong> CardRewardScreensInFlight = [];
     private static readonly HashSet<ulong> MapScreensInFlight = [];
+    private static readonly HashSet<ulong> EventLayoutsInFlight = [];
     private static readonly IPlanningSnapshotBuilder SnapshotBuilder = new PlanningSnapshotBuilder();
 
     private static IDisposable? _selectorScope;
@@ -77,6 +82,28 @@ public static class PlannerRuntime
         return true;
     }
 
+    public static bool TryPlanPotionUse(Player player, out PotionModel potion, out MegaCrit.Sts2.Core.Entities.Creatures.Creature? target)
+    {
+        potion = null!;
+        target = null;
+
+        if (!IsEnabled)
+        {
+            return false;
+        }
+
+        PlanningSnapshot snapshot = BuildSnapshot();
+        PotionPlan? plan = Policy.PlanPotion(snapshot);
+        if (plan == null)
+        {
+            return false;
+        }
+
+        potion = plan.Potion;
+        target = plan.Target;
+        return true;
+    }
+
     public static void HandleRewardsScreen(NRewardsScreen screen)
     {
         if (!IsEnabled || !TryRegister(RewardScreensInFlight, screen))
@@ -105,6 +132,16 @@ public static class PlannerRuntime
         }
 
         TaskHelper.RunSafely(HandleMapScreenAsync(screen));
+    }
+
+    public static void HandleEventLayout(NEventLayout layout)
+    {
+        if (!IsEnabled || !TryRegister(EventLayoutsInFlight, layout))
+        {
+            return;
+        }
+
+        TaskHelper.RunSafely(HandleEventLayoutAsync(layout));
     }
 
     private static void SetEnabled(bool enabled)
@@ -232,7 +269,8 @@ public static class PlannerRuntime
             NGridCardHolder? chosenHolder = holders.FirstOrDefault(holder => ReferenceEquals(holder.CardModel, plan.Card));
             if (chosenHolder != null)
             {
-                await UiHelper.Click(chosenHolder.Hitbox, PlannerConfig.UiClickDelayMs);
+                chosenHolder.EmitSignal(NCardHolder.SignalName.Pressed, chosenHolder);
+                await Cmd.Wait(PlannerConfig.UiPollIntervalSeconds);
             }
         }
         catch (Exception ex)
@@ -292,6 +330,69 @@ public static class PlannerRuntime
         finally
         {
             Unregister(MapScreensInFlight, screen);
+        }
+    }
+
+    private static async Task HandleEventLayoutAsync(NEventLayout layout)
+    {
+        try
+        {
+            await Cmd.Wait(PlannerConfig.EventScreenStartDelaySeconds);
+
+            while (IsEnabled && GodotObject.IsInstanceValid(layout))
+            {
+                NEventRoom? eventRoom = NEventRoom.Instance;
+                if (eventRoom == null || !GodotObject.IsInstanceValid(eventRoom) || !ReferenceEquals(eventRoom.Layout, layout))
+                {
+                    break;
+                }
+
+                if (!ActiveScreenContext.Instance.IsCurrent(eventRoom))
+                {
+                    if (!layout.IsVisibleInTree())
+                    {
+                        break;
+                    }
+
+                    await Cmd.Wait(PlannerConfig.UiPollIntervalSeconds);
+                    continue;
+                }
+
+                List<NEventOptionButton> buttons = layout.OptionButtons
+                    .Where(static button => GodotObject.IsInstanceValid(button) && !button.Option.IsLocked)
+                    .ToList();
+
+                if (buttons.Count == 0)
+                {
+                    await Cmd.Wait(PlannerConfig.UiPollIntervalSeconds);
+                    continue;
+                }
+
+                PlanningSnapshot snapshot = BuildSnapshot();
+                EventPlan? plan = Policy.PlanEvent(snapshot, buttons.Select(static button => button.Option).ToList());
+                if (plan == null)
+                {
+                    break;
+                }
+
+                NEventOptionButton? chosenButton = buttons.FirstOrDefault(button => ReferenceEquals(button.Option, plan.Option));
+                if (chosenButton == null)
+                {
+                    await Cmd.Wait(PlannerConfig.UiPollIntervalSeconds);
+                    continue;
+                }
+
+                await UiHelper.Click(chosenButton, PlannerConfig.UiClickDelayMs);
+                await Cmd.Wait(PlannerConfig.EventPostChoiceDelaySeconds);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Planner event automation failed: {ex}");
+        }
+        finally
+        {
+            Unregister(EventLayoutsInFlight, layout);
         }
     }
 
