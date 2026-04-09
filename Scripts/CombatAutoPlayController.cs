@@ -15,6 +15,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.ScreenContext;
+using ModTest.Scripts.Planning;
 
 namespace ModTest.Scripts;
 
@@ -137,10 +138,17 @@ public static class CombatAutoPlayController
         card = null!;
         target = null;
 
+        if (PlannerRuntime.TryPlanCombatAction(player, out CardModel? plannedCard, out Creature? plannedTarget))
+        {
+            card = plannedCard;
+            target = plannedTarget;
+            return true;
+        }
+
         List<CardModel> handCards = player.PlayerCombatState?.Hand.Cards.ToList() ?? new List<CardModel>();
         foreach (CardModel handCard in handCards)
         {
-            if (!TryResolveTarget(handCard, out Creature? resolvedTarget))
+            if (!CombatTargeting.TryResolveTarget(handCard, out Creature? resolvedTarget))
             {
                 continue;
             }
@@ -151,82 +159,6 @@ public static class CombatAutoPlayController
         }
 
         return false;
-    }
-
-    private static bool TryResolveTarget(CardModel card, out Creature? target)
-    {
-        target = null;
-
-        CombatState? combatState = card.CombatState;
-        if (combatState == null)
-        {
-            return false;
-        }
-
-        switch (card.TargetType)
-        {
-            case TargetType.AnyEnemy:
-                foreach (Creature enemy in GetEnemyTargets(combatState))
-                {
-                    if (card.CanPlayTargeting(enemy))
-                    {
-                        target = enemy;
-                        return true;
-                    }
-                }
-
-                return false;
-
-            case TargetType.AnyAlly:
-                foreach (Creature ally in GetAllyTargets(card.Owner, combatState))
-                {
-                    if (card.CanPlayTargeting(ally))
-                    {
-                        target = ally;
-                        return true;
-                    }
-                }
-
-                return false;
-
-            default:
-                return card.CanPlayTargeting(null);
-        }
-    }
-
-    private static IEnumerable<Creature> GetEnemyTargets(CombatState combatState)
-    {
-        HashSet<Creature> seen = new HashSet<Creature>();
-
-        foreach (Creature enemy in combatState.HittableEnemies.Where(static creature => creature.IsAlive))
-        {
-            if (seen.Add(enemy))
-            {
-                yield return enemy;
-            }
-        }
-
-        foreach (Creature enemy in combatState.Enemies.Where(static creature => creature.IsAlive))
-        {
-            if (seen.Add(enemy))
-            {
-                yield return enemy;
-            }
-        }
-    }
-
-    private static IEnumerable<Creature> GetAllyTargets(Player owner, CombatState combatState)
-    {
-        Creature ownerCreature = owner.Creature;
-        if (ownerCreature.IsAlive)
-        {
-            yield return ownerCreature;
-        }
-
-        foreach (Creature ally in combatState.Creatures.Where(creature => creature.IsAlive && creature.Side == ownerCreature.Side && creature != ownerCreature))
-        {
-            yield return ally;
-        }
     }
 
     private static async Task<bool> WaitForCardToLeaveHand(Player player, CardModel card)
