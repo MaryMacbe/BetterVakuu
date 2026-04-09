@@ -6,7 +6,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.TestSupport;
 
-namespace ModTest.Scripts.Planning;
+namespace BetterVakuu.Scripts.Planning;
 
 public sealed class PlanningCardSelector : ICardSelector
 {

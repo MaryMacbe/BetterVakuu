@@ -9,7 +9,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 
-namespace ModTest.Scripts.Planning;
+namespace BetterVakuu.Scripts.Planning;
 
 public sealed class PlanningSnapshot
 {

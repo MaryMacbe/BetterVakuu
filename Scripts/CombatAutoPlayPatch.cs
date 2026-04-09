@@ -2,7 +2,7 @@ using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 
-namespace ModTest.Scripts;
+namespace BetterVakuu.Scripts;
 
 [HarmonyPatch(typeof(NPlayerHand), nameof(NPlayerHand._UnhandledInput))]
 public static class CombatAutoPlayPatch

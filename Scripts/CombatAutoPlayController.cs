@@ -15,10 +15,11 @@ using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Nodes.Screens.ScreenContext;
-using ModTest.Scripts.Planning;
+using BetterVakuu.Scripts.Planning;
 
-namespace ModTest.Scripts;
+namespace BetterVakuu.Scripts;
 
 public static class CombatAutoPlayController
 {
@@ -110,6 +111,11 @@ public static class CombatAutoPlayController
     private static bool CanAutoPlay(out Player? player)
     {
         player = null;
+
+        if (CombatManager.Instance.IsInProgress && NMapScreen.Instance?.IsOpen == true)
+        {
+            NMapScreen.Instance.Close(animateOut: false);
+        }
 
         if (NCombatRoom.Instance == null ||
             !ActiveScreenContext.Instance.IsCurrent(NCombatRoom.Instance) ||

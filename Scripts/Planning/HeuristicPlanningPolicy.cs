@@ -7,7 +7,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Rooms;
 
-namespace ModTest.Scripts.Planning;
+namespace BetterVakuu.Scripts.Planning;
 
 public sealed class HeuristicPlanningPolicy : IPlanningPolicy
 {

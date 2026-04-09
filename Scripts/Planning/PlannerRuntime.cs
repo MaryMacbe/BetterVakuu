@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using MegaCrit.Sts2.Core.AutoSlay.Helpers;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Events;
@@ -22,7 +23,7 @@ using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using MegaCrit.Sts2.Core.Nodes.Screens.ScreenContext;
 
-namespace ModTest.Scripts.Planning;
+namespace BetterVakuu.Scripts.Planning;
 
 public static class PlannerRuntime
 {
@@ -291,6 +292,16 @@ public static class PlannerRuntime
 
             while (IsEnabled && GodotObject.IsInstanceValid(screen))
             {
+                if (CombatManager.Instance.IsInProgress || (NCombatRoom.Instance != null && ActiveScreenContext.Instance.IsCurrent(NCombatRoom.Instance)))
+                {
+                    if (screen.IsOpen)
+                    {
+                        screen.Close(animateOut: false);
+                    }
+
+                    break;
+                }
+
                 if (!screen.IsOpen || !screen.IsTravelEnabled || screen.IsTraveling)
                 {
                     await Cmd.Wait(PlannerConfig.UiPollIntervalSeconds);

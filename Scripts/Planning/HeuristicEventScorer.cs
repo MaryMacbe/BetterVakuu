@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using MegaCrit.Sts2.Core.Events;
 
-namespace ModTest.Scripts.Planning;
+namespace BetterVakuu.Scripts.Planning;
 
 public sealed class HeuristicEventScorer
 {

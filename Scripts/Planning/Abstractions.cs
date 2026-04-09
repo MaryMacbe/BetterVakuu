@@ -5,7 +5,7 @@ using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rewards;
 
-namespace ModTest.Scripts.Planning;
+namespace BetterVakuu.Scripts.Planning;
 
 public interface IPlanningPolicy : ICombatPlanner, IMapPlanner, IRewardPlanner, ICardChoicePlanner, IPotionPlanner, IEventPlanner
 {

@@ -1,23 +1,24 @@
-using Godot.Bridge;
+﻿using Godot.Bridge;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 
-namespace ModTest.Scripts;
+namespace BetterVakuu.Scripts;
 
-// 必须要加的属性，用于注册Mod。字符串和初始化函数命名一致。
+// 蹇呴』瑕佸姞鐨勫睘鎬э紝鐢ㄤ簬娉ㄥ唽Mod銆傚瓧绗︿覆鍜屽垵濮嬪寲鍑芥暟鍛藉悕涓€鑷淬€?
 [ModInitializer("Init")]
 public class Entry
 {
-    // 初始化函数
+    // 鍒濆鍖栧嚱鏁?
     public static void Init()
     {
-        // 打patch（即修改游戏代码的功能）用
-        // 传入参数随意，只要不和其他人撞车即可
-        var harmony = new Harmony("sts2.reme.testmod");
+        // 鎵損atch锛堝嵆淇敼娓告垙浠ｇ爜鐨勫姛鑳斤級鐢?
+        // 浼犲叆鍙傛暟闅忔剰锛屽彧瑕佷笉鍜屽叾浠栦汉鎾炶溅鍗冲彲
+        var harmony = new Harmony("sts2.bettervakuu");
         harmony.PatchAll();
-        // 使得tscn可以加载自定义脚本
+        // 浣垮緱tscn鍙互鍔犺浇鑷畾涔夎剼鏈?
         ScriptManagerBridge.LookupScriptsInAssembly(typeof(Entry).Assembly);
         Log.Debug("Mod initialized!");
     }
 }
+

@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ModTest.Scripts.Planning;
+namespace BetterVakuu.Scripts.Planning;
 
 public static class PlannerConfig
 {
